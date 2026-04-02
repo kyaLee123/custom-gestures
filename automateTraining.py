@@ -6,6 +6,7 @@ import argparse
 import itertools
 from collections import Counter
 from collections import deque
+import time
 
 import cv2 as cv
 import numpy as np
@@ -39,6 +40,7 @@ def get_args():
 
 
 def main():
+    print("in main")
     # Argument parsing #################################################################
     args = get_args()
 
@@ -96,25 +98,31 @@ def main():
     finger_gesture_history = deque(maxlen=history_length)
 
     #  ########################################################################
-    mode = 0
+ #################################training mode ###############################3
+    mode = 1
+    last_capture_time = time.time()
+    capture_interval = 0.5  # seconds
+    number = -1
+
+
 
     while True:
         fps = cvFpsCalc.get()
-
-        # Process Key (ESC: end) #################################################
         key = cv.waitKey(10)
         if key == 27:  # ESC
             break
-        number, mode = select_mode(key, mode)
+        if key == ord(' '):
+            number = -1
+        else:
+            number= select_number(key, number)
+        print("training gesture: ", number)
 
-        # Camera capture #####################################################
         ret, image = cap.read()
         if not ret:
             break
         image = cv.flip(image, 1)  # Mirror display
         debug_image = copy.deepcopy(image)
 
-        # Detection implementation #############################################################
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
 
         image.flags.writeable = False
@@ -136,8 +144,16 @@ def main():
                 pre_processed_point_history_list = pre_process_point_history(
                     debug_image, point_history)
                 # Write to the dataset file
-                logging_csv(number, mode, pre_processed_landmark_list,
-                            pre_processed_point_history_list)
+                current_time = time.time()
+
+                if current_time - last_capture_time >= capture_interval:
+                    logging_csv(
+                        number,
+                        mode,
+                        pre_processed_landmark_list,
+                        pre_processed_point_history_list
+                    )
+                    last_capture_time = current_time
 
                 # Hand sign classification
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
@@ -161,13 +177,7 @@ def main():
                 # Drawing part
                 debug_image = draw_bounding_rect(use_brect, debug_image, brect)
                 debug_image = draw_landmarks(debug_image, landmark_list)
-                debug_image = draw_info_text(
-                    debug_image,
-                    brect,
-                    handedness,
-                    keypoint_classifier_labels[hand_sign_id],
-                    point_history_classifier_labels[most_common_fg_id[0][0]],
-                )
+
         else:
             point_history.append([0, 0])
 
@@ -179,6 +189,13 @@ def main():
 
     cap.release()
     cv.destroyAllWindows()
+
+
+def select_number(key, lastNumber):
+    number = lastNumber
+    if 48 <= key <= 57:  # 0 ~ 9
+        number = key - 48
+    return number
 
 
 def select_mode(key, mode):
@@ -286,6 +303,8 @@ def logging_csv(number, mode, landmark_list, point_history_list):
         with open(csv_path, 'a', newline="") as f:
             writer = csv.writer(f)
             writer.writerow([number, *landmark_list])
+
+
     if mode == 2 and (0 <= number <= 9):
         csv_path = 'model/point_history_classifier/point_history.csv'
         with open(csv_path, 'a', newline="") as f:
