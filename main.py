@@ -1,4 +1,6 @@
-import automateTraining as Automate
+import getData as GetData
+import kc as Train
+import runTrained as Run
 
 
 if __name__ == "__main__":
@@ -13,4 +15,10 @@ if __name__ == "__main__":
             name = input()
             f.write(name + '\n')
         f.close()
-        Automate.main()
+        GetData.main(num)
+        print("data collection complete, moving on to model training")
+    Train.main(num)
+    print("training done!")
+    Run.main()
+
+
