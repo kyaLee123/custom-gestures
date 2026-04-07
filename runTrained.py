@@ -14,6 +14,7 @@ import mediapipe as mp
 from utils import CvFpsCalc
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
+import remote.serverSimple as Server
 
 #hand_sign_text = actual hand gesture name
 
@@ -40,7 +41,7 @@ def get_args():
     return args
 
 
-def main():
+def main(actionsMap):
     # Argument parsing #################################################################
     args = get_args()
 
@@ -99,6 +100,7 @@ def main():
 
     #  ########################################################################
     mode = 0
+    last_sent_label = None
 
     while True:
         fps = cvFpsCalc.get()
@@ -168,10 +170,24 @@ def main():
                     point_history_classifier_labels[most_common_fg_id[0][0]],
                 )
                 action= keypoint_classifier_labels[hand_sign_id]
-                print(action)
-                ##this is where we can send teh action
+                action = keypoint_classifier_labels[hand_sign_id]
+                if hand_sign_id == -1:
+                    # low confidence, treat same as no hand
+                    if last_sent_label is not None:
+                        Server.stop()
+                        last_sent_label = None
+                else:
+                    action = keypoint_classifier_labels[hand_sign_id]
+                    if action != last_sent_label:
+                        Server.main(actionsMap[hand_sign_id])
+                        last_sent_label = action
+                ##this is where we can send the action
+
         else:
             point_history.append([0, 0])
+            if last_sent_label is not None:
+                    Server.stop()
+                    last_sent_label = None
 
         debug_image = draw_point_history(debug_image, point_history)
         debug_image = draw_info(debug_image, fps, 0, 0)
@@ -483,7 +499,6 @@ def draw_info_text(image, brect, handedness, hand_sign_text,
                    finger_gesture_text):
     cv.rectangle(image, (brect[0], brect[1]), (brect[2], brect[1] - 22),
                  (0, 0, 0), -1)
-    print(hand_sign_text)
 
     info_text = handedness.classification[0].label[0:]
 
@@ -530,4 +545,5 @@ def draw_info(image, fps, mode, number):
 
 
 if __name__ == '__main__':
-    main()
+    actionsMap = ["good", "spin", "sit"]
+    main(actionsMap)

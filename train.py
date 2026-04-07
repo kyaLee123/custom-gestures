@@ -10,7 +10,11 @@ dataset = 'model/keypoint_classifier/keypoint.csv'
 model_save_path = 'model/keypoint_classifier/keypoint_classifier.hdf5'
 tflite_save_path = 'model/keypoint_classifier/keypoint_classifier.tflite'
 
-NUM_CLASSES = 3 #add a dynamic thing for this
+with open('model/keypoint_classifier/keypoint_classifier_label.csv', 'r') as f:
+    line_count = sum(1 for line in f)
+
+print(f"Number of Skills: {line_count}")
+NUM_CLASSES = 3
 
 X_dataset = np.loadtxt(dataset, delimiter=',', dtype='float32', usecols=list(range(1, (21 * 2) + 1)))
 y_dataset = np.loadtxt(dataset, delimiter=',', dtype='int32', usecols=(0))

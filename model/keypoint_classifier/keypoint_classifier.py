@@ -28,9 +28,13 @@ class KeyPointClassifier(object):
         self.interpreter.invoke()
 
         output_details_tensor_index = self.output_details[0]['index']
-
         result = self.interpreter.get_tensor(output_details_tensor_index)
+        scores = np.squeeze(result)
 
-        result_index = np.argmax(np.squeeze(result))
+        result_index = np.argmax(scores)
+        confidence = scores[result_index]
+
+        if confidence < 0.7:  # tune this threshold
+            return -1  # unknown
 
         return result_index
